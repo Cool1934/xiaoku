@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>即构语聊房 · Cloudflare 版</title>
+<script src="https://unpkg.com/zego-express-engine-webrtc@3.14.2/index.js"></script>
+<script src="https://unpkg.com/zego-zim-web@2.18.0/index.js"></script>
+<style>
+:root{--bg:#0f1115;--panel:#181b22;--line:#262a33;--brand:#7c5cff;--ok:#2ecc71;--txt:#e7e9ee;--sub:#9aa3b2}
+*{box-sizing:border-box}body{margin:0;font:14px/1.5 system-ui,sans-serif;color:var(--txt);background:var(--bg)}
+.wrap{max-width:1180px;margin:0 auto;padding:18px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+h1{font-size:18px;margin:0 0 4px}h2{font-size:14px;color:var(--sub);margin:0 0 12px;font-weight:500}
+.btn{appearance:none;border:0;cursor:pointer;padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;background:#242832;color:var(--txt)}
+.btn:hover{background:#2f343f}.btn.primary{background:var(--brand);color:#fff}.btn.ok{background:var(--ok);color:#04140a}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+input{width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--line);background:#11141a;color:var(--txt);font-size:13px;margin-bottom:8px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.grow{flex:1}.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+@media(max-width:760px){.grid{grid-template-columns:repeat(3,1fr)}}
+.seat{border:1px solid var(--line);border-radius:12px;padding:12px 8px;text-align:center;background:#11141a;position:relative;min-height:92px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.seat.taken{border-color:var(--brand);background:#1a1630}.seat.me{border-color:var(--ok);background:#11241a}
+.seat .num{position:absolute;top:6px;left:8px;font-size:11px;color:var(--sub)}.seat .name{font-size:13px;font-weight:600;word-break:break-all}
+.seat .tag{font-size:10px;color:var(--sub)}.seat .mic{font-size:18px}
+#roomView{display:none}.info{display:flex;gap:14px;flex-wrap:wrap;color:var(--sub);font-size:12px;margin-bottom:10px}
+.info b{color:var(--txt)}.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:9px 16px;border-radius:9px;font-size:13px;display:none;z-index:99}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="loginView" class="card">
+    <h1>即构语聊房 <span style="color:var(--sub);font-size:12px">Cloudflare Pages + Worker</span></h1>
+    <h2>第一步：登录并进入房间</h2>
+    <input id="inAppId" placeholder="即构 AppID（数字）" type="number" />
+    <input id="inTokenUrl" placeholder="Worker Token 地址，如 https://token.xxx.workers.dev/api/token" />
+    <div class="row"><input id="inUserId" placeholder="你的用户ID，如 u1" style="margin:0" /></div>
+    <div class="row" style="margin-top:6px"><input id="inRoomId" placeholder="房间ID，如 room1" style="margin:0" /></div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn primary" id="btnCreate">创建并进入房间</button>
+      <button class="btn" id="btnJoin">加入已有房间</button>
+    </div>
+    <p style="color:var(--sub);font-size:12px;margin:12px 0 0">提示：两个浏览器标签用不同用户ID进同一房间即可互听。AppID 也可填后由 Worker/前端共用。</p>
+  </div>
+
+  <div id="roomView" class="card">
+    <div class="row"><h1 id="roomTitle" class="grow">房间</h1><button class="btn" id="btnLeave">离开房间</button></div>
+    <div class="info"><span>房间ID：<b id="iRoom"></b></span><span>房主：<b id="iOwner">-</b></span><span>麦位：<b id="iSeats">0/15</b></span></div>
+    <h2>15 个麦位（点击空麦位上麦；占座后点自己下麦）</h2>
+    <div id="seatGrid" class="grid"></div>
+    <div id="audioHost" style="margin-top:12px"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=(s)=>document.querySelector(s);
+const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='',2200);};
+const APP_ID=()=>Number($('#inAppId').value)||0;
+const TOKEN_URL=()=>$('#inTokenUrl').value.trim();
+let zg=null,zim=null,myUserId='',myRoomId='',mySeat=-1,mediaStream=null,seats={},roomInfo={name:'',owner:''};
+
+function buildSeats(){const g=$('#seatGrid');g.innerHTML='';for(let i=0;i<15;i++){const d=document.createElement('div');d.className='seat';d.dataset.i=i;d.innerHTML=`<span class="num">${i+1}</span><span class="mic">🎤</span><span class="name">空</span><span class="tag">点击上麦</span>`;d.onclick=()=>onSeatClick(i);g.appendChild(d);}}
+function renderSeats(){let taken=0;for(let i=0;i<15;i++){const d=$('#seatGrid').children[i];const o=seats['seat'+i];d.classList.remove('taken','me');if(o&&o.uid){d.classList.add('taken');if(o.uid===myUserId)d.classList.add('me');d.querySelector('.name').textContent=o.name||o.uid;d.querySelector('.tag').textContent=o.uid===myUserId?'点击下麦':'占座中';taken++;}else{d.querySelector('.name').textContent='空';d.querySelector('.tag').textContent='点击上麦';}}$('#iSeats').textContent=`${taken}/15`;}
+async function onSeatClick(i){if(mySeat===i){await leaveSeat();return;}if(mySeat>=0)return toast('你已在 '+mySeat+' 号麦位，先下麦');const key='seat'+i;if(seats[key]&&seats[key].uid)return toast('该麦位已被占');const ok=await setAttr(key,{uid:myUserId,name:$('#inUserId').value||myUserId,at:Date.now()});if(ok){mySeat=i;await publish();renderSeats();}}
+async function getToken(userId,roomId){const r=await fetch(TOKEN_URL(),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({userId,roomId})});if(!r.ok)throw new Error('Token 请求失败 '+r.status);return r.json();}
+function applyAttr(k,v){if(k==='roominfo'){try{roomInfo=JSON.parse(v);$('#iOwner').textContent=roomInfo.owner||'-';}catch(e){}}else{try{seats[k]=JSON.parse(v);}catch(e){}}}
+
+async function enter(asOwner){myUserId=$('#inUserId').value.trim()||'u_'+Math.random().toString(36).slice(2,7);myRoomId=$('#inRoomId').value.trim()||'room_'+Math.random().toString(36).slice(2,6);if(!APP_ID())return toast('请填写 AppID');if(!TOKEN_URL())return toast('请填写 Worker Token 地址');$('#loginView').style.display='none';$('#roomView').style.display='block';$('#iRoom').textContent=myRoomId;$('#roomTitle').textContent=myRoomId;buildSeats();
+ try{
+  const {token}=await getToken(myUserId,myRoomId);
+  zg=new ZegoExpressEngine(APP_ID(),'');
+  zg.on('roomStreamUpdate',(rid,type,list)=>{list.forEach(s=>{if(type==='ADD'){const el=document.createElement('audio');el.autoplay=true;el.id='aud_'+s.streamID;$('#audioHost').appendChild(el);zg.startPlayingStream(s.streamID,el).catch(()=>{});}else{zg.stopPlayingStream(s.streamID);const a=$('#aud_'+s.streamID);if(a)a.remove();}});});
+  await zg.loginRoom(myRoomId,token,{userID:myUserId,userName:myUserId});
+  zim=ZIM.create({appID:APP_ID()});await zim.login({userID:myUserId,userName:myUserId},token);
+  if(asOwner){await zim.createRoom({roomID:myRoomId,roomName:myRoomId},{roomAttributes:{roominfo:JSON.stringify({name:myRoomId,owner:myUserId,at:Date.now()})},roomDestroyDelayTime:30}).catch(()=>{});}
+  await zim.enterRoom(myRoomId);
+  zim.on('roomAttributesUpdated',(_z,{infos})=>{infos.forEach(v=>{if(v.action===0||v.action===2)delete seats[v.key];if(v.action===1||v.action===2)applyAttr(v.key,v.value);});renderSeats();});
+  const q=await zim.queryRoomAttributes(myRoomId).catch(()=>({}));const attrs=(q&&q.roomAttributes)||{};Object.keys(attrs).forEach(k=>applyAttr(k,attrs[k]));renderSeats();
+ }catch(e){toast('进入失败：'+e.message);console.error(e);}
+}
+async function setAttr(key,val){return zim.setRoomAttributes({[key]:JSON.stringify(val)},myRoomId,{isForce:false}).then(()=>true).catch(e=>{toast('操作失败：'+e.message);return false;});}
+async function publish(){try{const id=`${myRoomId}_${mySeat}_${myUserId}`;mediaStream=await zg.createStream({audio:true});await zg.startPublishingStream(id,mediaStream);toast('已在 '+mySeat+' 号麦位推流');}catch(e){toast('推流失败：'+e.message);}}
+async function leaveSeat(){if(mySeat<0)return;try{zg&&mediaStream&&zg.stopPublishingStream(`${myRoomId}_${mySeat}_${myUserId}`);zg&&zg.destroyStream(mediaStream);}catch(e){}mediaStream=null;await zim.deleteRoomAttributes(['seat'+mySeat],myRoomId,{isForce:false}).catch(()=>{});mySeat=-1;renderSeats();}
+async function leaveRoom(){await leaveSeat();try{zg&&zg.logoutRoom(myRoomId);}catch(e){}try{zim&&zim.leaveRoom(myRoomId);}catch(e){}$('#roomView').style.display='none';$('#loginView').style.display='block';seats={};mySeat=-1;}
+$('#btnCreate').onclick=()=>enter(true);$('#btnJoin').onclick=()=>enter(false);$('#btnLeave').onclick=leaveRoom;
+</script>
+</body>
+</html>
