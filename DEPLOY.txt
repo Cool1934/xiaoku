@@ -1,8 +1,0 @@
-部署 4 步：
-1) cd zego-phone-login-room
-2) wrangler kv namespace create zego_kv   # 把返回的 id 填进 wrangler.toml 的 REPLACE_WITH_YOUR_KV_NAMESPACE_ID
-3) wrangler secret put APP_ID             # 1183388233
-   wrangler secret put SERVER_SECRET      # 你的 32 位 ServerSecret
-4) wrangler deploy
-打开 *.workers.dev -> 输手机号 -> 验证码自动填入 -> 登录 -> 创建/加入房间 -> 15 麦位语聊。
-两个标签用不同手机号进同一房间即可互听。
