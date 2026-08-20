@@ -1,29 +1,54 @@
-// 即构 Token04 签发（自包含，零依赖，适配 Cloudflare Worker + Node）
-// 算法：以 "04<appId><userId><nonce><createTime><expire><payload>" 为 HMAC-SHA256 输入，
-// 把 {app_id,user_id,nonce,create_time,expire_timestamp,payload,signature} JSON 后 base64url 编码，前缀 "04"。
-const enc = new TextEncoder();
-function b64u(bytes) {
-  // bytes: Uint8Array | ArrayBuffer
-  const buf = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-  // Buffer.from 接受 Uint8Array，toString('base64') 得标准 base64，再转 base64url
-  const b64 = Buffer.from(buf).toString("base64");
-  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+// 即构 Token04 自包含签发（兼容 Node.js 与 Cloudflare Workers）
+// 不依赖即构官方 npm 包，避免 Workers 构建依赖问题
+
+function base64UrlEncode(input) {
+  let bytes;
+  if (typeof Buffer !== 'undefined' && typeof Buffer.from === 'function') {
+    bytes = Buffer.from(input);
+    return bytes.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  // 浏览器 / Workers
+  const u8 = (input instanceof Uint8Array) ? input : new TextEncoder().encode(input);
+  let bin = '';
+  for (let i = 0; i < u8.length; i++) bin += String.fromCharCode(u8[i]);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
-async function hmacKey(secret) {
-  return crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+
+async function hmacSha256(key, msg) {
+  // Node 优先（Workers 环境无 require/Node crypto 模块，走下方 catch）
+  try {
+    const cryptoNode = await import('crypto');
+    if (cryptoNode && cryptoNode.createHmac) {
+      return new Uint8Array(cryptoNode.createHmac('sha256', key).update(msg).digest());
+    }
+  } catch {}
+  // 浏览器 / Workers 用 Web Crypto
+  if (typeof crypto !== 'undefined' && crypto.subtle) {
+    const enc = new TextEncoder();
+    const k = await crypto.subtle.importKey('raw', typeof key === 'string' ? enc.encode(key) : key, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', k, enc.encode(msg));
+    return new Uint8Array(sig);
+  }
+  throw new Error('HMAC-SHA256 unavailable');
 }
-async function hmacSign(key, data) {
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(data));
-  return new Uint8Array(sig);
-}
-export async function buildToken04(appId, userId, secret, expireSec, payloadStr) {
-  const appIdN = Number(appId);
+
+export async function signToken04(appId, userId, serverSecret, expireSec, payload) {
+  let roomInfo = {};
+  if (payload == null) roomInfo = {};
+  else if (typeof payload === 'string') {
+    const s = payload.trim();
+    if (s === '' || s === 'null') roomInfo = {};
+    else if (s.startsWith('{')) { try { roomInfo = JSON.parse(s); } catch { roomInfo = { room_id: s }; } }
+    else roomInfo = { room_id: s };
+  } else roomInfo = payload;
+  const header = { alg: 'HS256', typ: 'JWT', app_id: Number(appId), room_id: roomInfo.room_id || '' };
   const now = Math.floor(Date.now() / 1000);
-  const nonce = Math.floor(Math.random() * 0xffffffff);
-  const payload = String(payloadStr || "");
-  const msg = "04" + appIdN + userId + nonce + now + expireSec + payload;
-  const key = await hmacKey(secret);
-  const sig = await hmacSign(key, msg);
-  const body = { app_id: appIdN, user_id: userId, nonce, create_time: now, expire_timestamp: now + expireSec, payload, signature: b64u(sig) };
-  return "04" + b64u(enc.encode(JSON.stringify(body)));
+  const body = { iat: now, exp: now + Number(expireSec || 3600), app_id: Number(appId), user_id: String(userId), privilege: roomInfo.privilege || { 1: 1, 2: 1 }, stream_id_list: roomInfo.stream_id_list || null };
+  const h = base64UrlEncode(JSON.stringify(header));
+  const b = base64UrlEncode(JSON.stringify(body));
+  const signingInput = h + '.' + b;
+  const sig = await hmacSha256(serverSecret, signingInput);
+  return '04' + signingInput + '.' + base64UrlEncode(sig);
 }
+
+export default { signToken04 };

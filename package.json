@@ -1,11 +1,10 @@
 {
   "name": "zego-phone-login-room",
   "version": "1.0.0",
-  "description": "即构语聊房：手机号验证码登录 + 房间创建 + 15麦位实时语聊（Cloudflare Worker 单项目版）",
+  "description": "即构语聊房 Cloudflare Worker 单项目版：手机号验证码登录 + 房间大厅 + 15麦位语聊",
   "type": "module",
+  "main": "worker.js",
   "scripts": {
-    "smoke": "node smoke.js",
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "smoke": "node smoke.js"
   }
 }
