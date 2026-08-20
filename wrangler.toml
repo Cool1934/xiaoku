@@ -1,3 +1,0 @@
-name = "zego-token"
-main = "worker/token.js"
-compatibility_date = "2024-06-01"
