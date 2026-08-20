@@ -1,0 +1,12 @@
+name = "zego-voice-room"
+main = "worker.js"
+compatibility_date = "2024-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+# KV 命名空间（先 `wrangler kv namespace create zego_kv` 拿到 id 填入下方）
+kv_namespaces = [
+  { binding = "KV", id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID" }
+]
+
+[build]
+command = ""  # 无构建步骤，纯 ES Module Worker
