@@ -1,0 +1,9 @@
+{
+  "name": "zego-phone-login-room",
+  "version": "1.0.0",
+  "description": "即构语聊房 Cloudflare Worker 单项目版：手机号验证码登录 + 房间大厅 + 15麦位语聊（KV 兜底，未绑 KV 也能跑）",
+  "type": "module",
+  "scripts": {
+    "smoke": "node smoke.js"
+  }
+}

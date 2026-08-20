@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>即构语聊房</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; background: #0f1420; color: #e6e9ef; min-height: 100vh; }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+  h1 { font-size: 22px; margin-bottom: 6px; }
+  .sub { color: #8a90a0; font-size: 13px; margin-bottom: 20px; }
+  .card { background: #181d2b; border: 1px solid #262c3d; border-radius: 14px; padding: 20px; margin-bottom: 18px; }
+  label { display: block; font-size: 13px; color: #aab1c0; margin-bottom: 6px; }
+  input { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid #2c3346; background: #11151f; color: #e6e9ef; font-size: 15px; outline: none; }
+  input:focus { border-color: #4f6bff; }
+  .row { display: flex; gap: 10px; align-items: flex-end; }
+  .row > div { flex: 1; }
+  button { padding: 11px 16px; border-radius: 10px; border: 0; background: #4f6bff; color: #fff; font-size: 15px; cursor: pointer; transition: .15s; white-space: nowrap; }
+  button:hover { background: #3d57e0; }
+  button:disabled { background: #2c3346; color: #6b7280; cursor: not-allowed; }
+  .btn-ghost { background: #232a3d; } .btn-ghost:hover { background: #2c3346; }
+  .btn-danger { background: #c0392b; } .btn-danger:hover { background: #e04b3a; }
+  .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  .seat { aspect-ratio: 1/1; border-radius: 12px; background: #11151f; border: 1px solid #262c3d; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 12px; color: #6b7280; cursor: pointer; transition: .15s; text-align: center; padding: 4px; }
+  .seat:hover { border-color: #4f6bff; }
+  .seat.me { border-color: #4f6bff; background: #1a2147; color: #b9c4ff; }
+  .seat.used { border-color: #2e9e5b; color: #9be8bd; }
+  .seat .nm { font-size: 11px; word-break: break-all; line-height: 1.2; }
+  .seat .ic { font-size: 20px; margin-bottom: 3px; }
+  #log { max-height: 160px; overflow:auto; font-size: 12px; color:#8a90a0; background:#0b0e16; border-radius:10px; padding:10px; margin-top:8px; }
+  .hide { display: none; }
+  .room-item { display:flex; justify-content:space-between; align-items:center; padding:12px; border:1px solid #262c3d; border-radius:10px; margin-bottom:8px; }
+  .room-item .rname { font-weight:600; }
+  .room-item .rmeta { font-size:12px; color:#8a90a0; }
+  .tag { font-size:11px; color:#9be8bd; }
+  .member-item { display:flex; justify-content:space-between; align-items:center; padding:8px 10px; border:1px solid #262c3d; border-radius:8px; margin-bottom:6px; font-size:13px; }
+  .member-item .m-actions button { padding:6px 10px; font-size:12px; margin-left:6px; }
+  .manage { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; align-items:center; }
+  .badge-owner { font-size:11px; color:#ffd166; border:1px solid #ffd166; border-radius:6px; padding:2px 6px; margin-left:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎙️ 即构语聊房</h1>
+  <div class="sub">15 麦位 · 手机号验证码登录 · 房主可踢人/全员静音 · 同域部署，无需填写 Worker 地址</div>
+
+  <!-- 登录 -->
+  <div class="card" id="loginBox">
+    <div class="row">
+      <div><label>手机号</label><input id="phone" type="tel" placeholder="请输入手机号" value="18888880001"></div>
+      <div><label>验证码</label><input id="code" type="text" placeholder="验证码"></div>
+    </div>
+    <div class="row" style="margin-top:12px;">
+      <button id="btnSms">获取验证码</button>
+      <button id="btnLogin">登录</button>
+    </div>
+    <div class="sub" style="margin-top:8px;">开发模式：验证码自动填入（同时打印到 Worker 日志）</div>
+  </div>
+
+  <!-- 房间大厅 -->
+  <div class="card hide" id="roomBox">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div><b id="who"></b> <span class="tag" id="uidTag"></span></div>
+      <button class="btn-ghost" id="btnNewRoom">+ 创建房间</button>
+    </div>
+    <div id="roomList"></div>
+    <div class="card hide" id="newRoomCard" style="margin-top:12px;">
+      <div class="row">
+        <div><label>房间ID</label><input id="newRoomId" placeholder="如 1001"></div>
+        <div><label>房间名称</label><input id="newRoomName" placeholder="如 深夜闲聊"></div>
+      </div>
+      <div style="margin-top:10px;"><button id="btnCreateRoom">确认创建</button></div>
+    </div>
+  </div>
+
+  <!-- 语聊房 -->
+  <div class="card hide" id="chatBox">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+      <div><b id="curRoom"></b> <span class="tag" id="seatStat"></span><span class="badge-owner hide" id="ownerBadge">房主</span></div>
+      <button class="btn-ghost" id="btnLeave">离开</button>
+    </div>
+    <!-- 房主管理栏 -->
+    <div class="manage hide" id="manageBar">
+      <button id="btnMuteAll">🔊 全员静音</button>
+      <span class="sub" style="margin:0;">（房主权限：可踢出成员 / 一键全员静音）</span>
+    </div>
+    <div class="grid" id="seats"></div>
+    <div style="margin-top:12px;"><b style="font-size:13px;color:#aab1c0;">在线成员</b></div>
+    <div id="memberList" style="margin-top:6px;"></div>
+    <div id="log"></div>
+  </div>
+</div>
+
+<script>
+// ============ CONFIG（已填好） ============
+const CONFIG = {
+  APP_ID: 1183388233,
+  RTC_SERVER: "wss://rtc.zego.im",
+  ZIM_SERVER: "wss://accesshub-wss.zego.im",
+  API: "" // 同域，Worker 托管前端，不用填地址
+};
+const $ = (id) => document.getElementById(id);
+const log = (m) => { const el=$('log'); if(!el) return; el.innerHTML += m+'<br>'; el.scrollTop=el.scrollHeight; };
+
+let curRoom = null;      // 当前房间对象 {roomId,name,ownerUid,members,mutedAll,kicked}
+let seatTaken = [];      // 麦位占用：[uid|null,...] 长度15
+let pollTimer = null;
+
+// ============ 获取验证码 ============
+$('btnSms').addEventListener('click', async () => {
+  const phone = $('phone').value.trim();
+  if (!/^1\d{10}$/.test(phone)) { alert('请输入正确手机号'); return; }
+  const btn = $('btnSms'); btn.disabled = true; btn.textContent = '发送中...';
+  try {
+    const res = await fetch(CONFIG.API + '/api/sms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone }) });
+    const data = await res.json();
+    if (data.ok) {
+      if (data.devCode) $('code').value = data.devCode;
+      let sec = 60; btn.textContent = sec+'s后重试';
+      const t = setInterval(()=>{ sec--; if(sec<=0){ clearInterval(t); btn.disabled=false; btn.textContent='获取验证码'; } else btn.textContent=sec+'s后重试'; }, 1000);
+      log('验证码已发送（开发模式自动填入）');
+    } else { alert(data.msg || '发送失败'); btn.disabled=false; btn.textContent='获取验证码'; }
+  } catch(e) { alert('网络错误：'+e.message); btn.disabled=false; btn.textContent='获取验证码'; }
+});
+
+// ============ 登录 ============
+$('btnLogin').addEventListener('click', async () => {
+  const phone=$('phone').value.trim(), code=$('code').value.trim();
+  if(!phone||!code){ alert('请输入手机号和验证码'); return; }
+  const res = await fetch(CONFIG.API+'/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ phone, code, roomId:'default' }) });
+  const data = await res.json();
+  if(data.ok){
+    localStorage.setItem('zego_user', JSON.stringify(data));
+    $('loginBox').classList.add('hide');
+    $('roomBox').classList.remove('hide');
+    $('who').textContent = data.userName; $('uidTag').textContent = data.uid;
+    loadRooms();
+    log('登录成功，Token 已签发');
+  } else alert(data.msg||'登录失败');
+});
+
+// ============ 房间大厅 ============
+async function loadRooms(){
+  const res = await fetch(CONFIG.API+'/api/rooms'); const data = await res.json();
+  const list = data.rooms||[];
+  const box = $('roomList'); box.innerHTML = '';
+  if(list.length===0){ box.innerHTML='<div class="sub">暂无房间，创建一个吧</div>'; return; }
+  const me=JSON.parse(localStorage.getItem('zego_user')||'{}');
+  list.forEach(r=>{ const d=document.createElement('div'); d.className='room-item';
+    const isOwner = r.ownerUid && r.ownerUid===me.uid;
+    d.innerHTML=`<div><div class="rname">${r.name}${isOwner?' <span class="badge-owner">我创建</span>':''}</div><div class="rmeta">房间ID ${r.roomId} · ${r.seats||15} 麦位 · 在线 ${(r.members&&r.members.length)||0}</div></div><button>${isOwner?'进入(房主)':'进入'}</button>`;
+    d.querySelector('button').addEventListener('click', ()=>enterRoom(r)); box.appendChild(d);
+  });
+}
+$('btnNewRoom').addEventListener('click', ()=>$('newRoomCard').classList.toggle('hide'));
+$('btnCreateRoom').addEventListener('click', async ()=>{
+  const roomId=$('newRoomId').value.trim(), name=$('newRoomName').value.trim();
+  if(!roomId||!name){ alert('房间ID和名称必填'); return; }
+  const me=JSON.parse(localStorage.getItem('zego_user')||'{}');
+  const res=await fetch(CONFIG.API+'/api/rooms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({roomId,name,ownerUid:me.uid||''})});
+  const data=await res.json(); if(data.ok){ $('newRoomId').value=''; $('newRoomName').value=''; $('newRoomCard').classList.add('hide'); loadRooms(); } else alert(data.msg||'创建失败');
+});
+
+// ============ 进入语聊房 ============
+async function enterRoom(room){
+  const me=JSON.parse(localStorage.getItem('zego_user')||'{}');
+  // 进房登记成员
+  await fetch(CONFIG.API+'/api/room/'+encodeURIComponent(room.roomId), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ uid:me.uid, action:'join' }) });
+  const detail = await (await fetch(CONFIG.API+'/api/room/'+encodeURIComponent(room.roomId))).json();
+  curRoom = detail.ok ? detail.room : room;
+  $('roomBox').classList.add('hide'); $('chatBox').classList.remove('hide');
+  $('curRoom').textContent = curRoom.name + '（'+curRoom.roomId+'）';
+  const isOwner = curRoom.ownerUid && curRoom.ownerUid===me.uid;
+  $('ownerBadge').classList.toggle('hide', !isOwner);
+  $('manageBar').classList.toggle('hide', !isOwner);
+  renderSeats(me.uid);
+  renderMembers(me.uid);
+  updateMuteBtn();
+  log('进入房间：'+curRoom.name+'（演示：点麦位上/下麦）');
+  if(curRoom.mutedAll) log('⚠️ 房主已开启全员静音');
+  // 轮询房间状态（成员/全员静音变化）
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(pollRoom, 5000);
+}
+function leaveRoom(){
+  if(pollTimer){ clearInterval(pollTimer); pollTimer=null; }
+  const me=JSON.parse(localStorage.getItem('zego_user')||'{}');
+  if(curRoom) fetch(CONFIG.API+'/api/room/'+encodeURIComponent(curRoom.roomId), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ uid:me.uid, action:'leave' }) }).catch(()=>{});
+  curRoom=null; seatTaken=[]; $('memberList').innerHTML='';
+  $('chatBox').classList.add('hide'); $('roomBox').classList.remove('hide'); loadRooms();
+}
+$('btnLeave').addEventListener('click', leaveRoom);
+
+async function pollRoom(){
+  if(!curRoom) return;
+  const me=JSON.parse(localStorage.getItem('zego_user')||'{}');
+  const detail = await (await fetch(CONFIG.API+'/api/room/'+encodeURIComponent(curRoom.roomId))).json();
+  if(!detail.ok){ if(detail.msg==='你已被房主移出房间'){ alert('你已被房主移出房间'); leaveRoom(); } return; }
+  const prevMute = curRoom.mutedAll; curRoom = detail.room;
+  renderMembers(me.uid); updateMuteBtn();
+  if(curRoom.mutedAll && !prevMute) log('⚠️ 房主开启了全员静音');
+  if(!curRoom.mutedAll && prevMute) log('🔊 房主取消了全员静音');
+}
+
+// ============ 15 麦位 UI（绑定 uid） ============
+function renderSeats(myUid){
+  const seatsEl=$('seats'); seatsEl.innerHTML='';
+  seatTaken = new Array(15).fill(null);
+  // 把成员映射到麦位（演示：成员依次占前 N 个麦位，自己占一个）
+  const members = (curRoom.members||[]).filter(u=>u!==myUid);
+  let mi=0;
+  for(let i=0;i<15;i++){
+    const s=document.createElement('div'); s.className='seat'; s.dataset.idx=i;
+    let label='麦位 '+ (i+1), cls='seat', who=null;
+    if(i===0){ who=myUid; cls='seat me'; label= myUid+'（我）'; }
+    else if(mi<members.length){ who=members[mi]; cls='seat used'; label=members[mi]; mi++; }
+    s.innerHTML=`<div class="ic">🎙️</div><div class="nm">${label}</div>`;
+    seatTaken[i]=who;
+    if(i===0){ s.onclick=()=>log('已是你的麦位'); }
+    seatsEl.appendChild(s);
+  }
+  $('seatStat').textContent='占用 '+(mi+1)+'/15';
+}
+// ============ 成员列表 + 房主踢人 ============
+function renderMembers(myUid){
+  const box=$('memberList'); box.innerHTML='';
+  const list=(curRoom.members||[]).map(u=>u);
+  if(list.length===0){ box.innerHTML='<div class="sub">暂无成员</div>'; return; }
+  list.forEach(u=>{
+    const d=document.createElement('div'); d.className='member-item';
+    const isMe=u===myUid;
+    d.innerHTML=`<div>${u}${isMe?'（我）':''}${curRoom.mutedAll?' <span class="tag">已静音</span>':''}</div>`;
+    const acts=document.createElement('div'); acts.className='m-actions';
+    if(curRoom.ownerUid===myUid && !isMe){
+      const b=document.createElement('button'); b.className='btn-danger'; b.textContent='踢出';
+      b.onclick=async ()=>{ if(!confirm('确定踢出 '+u+'？')) return; await fetch(CONFIG.API+'/api/room/'+encodeURIComponent(curRoom.roomId)+'/action', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ownerUid:myUid, act:'kick', targetUid:u }) }); log('已踢出 '+u); pollRoom(); });
+      acts.appendChild(b);
+    }
+    d.appendChild(acts); box.appendChild(d);
+  });
+}
+// ============ 全员静音（房主） ============
+function updateMuteBtn(){
+  const b=$('btnMuteAll'); if(!b) return;
+  b.textContent = (curRoom&&curRoom.mutedAll) ? '🔇 取消全员静音' : '🔊 全员静音';
+}
+$('btnMuteAll').addEventListener('click', async ()=>{
+  const me=JSON.parse(localStorage.getItem('zego_user')||'{}');
+  if(!curRoom||curRoom.ownerUid!==me.uid){ alert('仅房主可操作'); return; }
+  await fetch(CONFIG.API+'/api/room/'+encodeURIComponent(curRoom.roomId)+'/action', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ownerUid:me.uid, act:'muteAll' }) });
+  pollRoom(); log(curRoom.mutedAll?'已开启全员静音':'已取消全员静音');
+});
+
+// 自动恢复登录态
+const saved=localStorage.getItem('zego_user');
+if(saved){ try{ const d=JSON.parse(saved); $('loginBox').classList.add('hide'); $('roomBox').classList.remove('hide'); $('who').textContent=d.userName; $('uidTag').textContent=d.uid; loadRooms(); }catch{} }
+</script>
+</body>
+</html>

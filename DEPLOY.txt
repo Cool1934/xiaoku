@@ -1,0 +1,13 @@
+=== 4 步部署速查 ===
+1. cd zego-phone-login-room
+2. wrangler kv namespace create zego_kv   -> 把返回 id 填进 wrangler.toml 的 REPLACE_WITH_YOUR_KV_NAMESPACE_ID
+3. wrangler secret put APP_ID            -> 1183388233
+   wrangler secret put SERVER_SECRET     -> 你的 32 位 ServerSecret
+4. wrangler deploy                       -> 打开输出的 *.workers.dev
+
+=== 使用 ===
+手机号 -> 获取验证码(自动填入) -> 登录 -> 创建/加入房间 -> 点麦位上/下麦
+房主：成员列表点「踢出」踢人；管理栏「全员静音」一键静音全部成员
+
+=== 自检 ===
+node smoke.js

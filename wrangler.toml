@@ -1,0 +1,9 @@
+name = "zego-voice-room"
+main = "worker.js"
+compatibility_date = "2024-06-01"
+
+# 将下面 REPLACE_WITH_YOUR_KV_NAMESPACE_ID 替换为 `wrangler kv namespace create zego_kv` 返回的 id
+# 未绑 KV 时 Worker 会自动走内存兜底，仍可正常运行（仅本实例进程内有效）
+kv_namespaces = [
+  { binding = "KV", id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID" }
+]
