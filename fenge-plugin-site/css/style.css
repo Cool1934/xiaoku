@@ -1,0 +1,192 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #0d0f14;
+  color: #e8e8e8;
+  line-height: 1.6;
+}
+
+header {
+  background: linear-gradient(135deg, #ff5f6d, #7b2ff7);
+  padding: 40px 20px;
+  text-align: center;
+  color: #fff;
+}
+
+.logo {
+  font-size: 32px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.desc {
+  opacity: 0.9;
+  font-size: 15px;
+  margin-bottom: 18px;
+}
+
+nav {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+nav a {
+  color: #fff;
+  background: rgba(255,255,255,0.18);
+  padding: 8px 18px;
+  border-radius: 20px;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background 0.2s;
+}
+
+nav a:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+main {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 30px 16px;
+}
+
+section {
+  margin-bottom: 40px;
+}
+
+h2 {
+  font-size: 22px;
+  margin-bottom: 6px;
+  color: #fff;
+}
+
+.section-tip {
+  color: #9aa3b2;
+  font-size: 14px;
+  margin-bottom: 18px;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: #161a22;
+  border: 1px solid #262c38;
+  border-radius: 12px;
+  padding: 20px;
+  transition: border-color 0.2s;
+}
+
+.card:hover {
+  border-color: #7b2ff7;
+}
+
+.card h3 {
+  font-size: 16px;
+  margin-bottom: 8px;
+  color: #fff;
+}
+
+.card p {
+  color: #9aa3b2;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.card .meta {
+  color: #7b2ff7;
+  font-size: 12px;
+}
+
+.dl-btn {
+  display: inline-block;
+  margin-top: 12px;
+  background: linear-gradient(135deg, #ff5f6d, #7b2ff7);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 14px;
+  transition: opacity 0.2s;
+}
+
+.dl-btn:hover {
+  opacity: 0.85;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: #161a22;
+  border: 1px solid #262c38;
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+
+.num {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  background: #7b2ff7;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.step p {
+  color: #ccc;
+  font-size: 14px;
+}
+
+.step code {
+  background: #0d0f14;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: monospace;
+  color: #ff5f6d;
+}
+
+.more {
+  margin-top: 14px;
+}
+
+.more a {
+  color: #7b2ff7;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+footer {
+  text-align: center;
+  padding: 30px 16px;
+  border-top: 1px solid #262c38;
+  color: #555;
+  font-size: 13px;
+}
+
+footer a {
+  color: #7b2ff7;
+}
+
+@media (max-width: 600px) {
+  .logo { font-size: 24px; }
+  .card-grid { grid-template-columns: 1fr; }
+}
