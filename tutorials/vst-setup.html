@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>疯歌VST插件安装教程</title>
+<link rel="stylesheet" href="../css/style.css" />
+<style>
+  .tutorial-content { max-width: 800px; margin: 0 auto; padding: 30px 16px; }
+  .tutorial-content h1 { color: #fff; margin-bottom: 20px; font-size: 26px; }
+  .tutorial-content h2 { color: #7b2ff7; margin-top: 30px; margin-bottom: 10px; font-size: 18px; }
+  .tutorial-content p, .tutorial-content li { color: #ccc; font-size: 15px; }
+  .tutorial-content ul { padding-left: 20px; margin-bottom: 16px; }
+  .tutorial-content li { margin-bottom: 8px; }
+  .tutorial-content code { background: #161a22; padding: 2px 8px; border-radius: 4px; color: #ff5f6d; }
+  .back { display: inline-block; margin-bottom: 20px; color: #7b2ff7; text-decoration: none; font-size: 14px; }
+</style>
+</head>
+<body>
+<a class="back" href="../index.html">← 返回首页</a>
+<div class="tutorial-content">
+  <h1>疯歌 VST 插件安装教程</h1>
+
+  <h2>一、准备插件</h2>
+  <ul>
+    <li>从本站下载 VST 包，解压得到 <code>.dll</code> 或 <code>.vst3</code> 文件</li>
+    <li>在 D 盘新建文件夹 <code>D:\VSTPlugins</code>（路径不要有中文）</li>
+    <li>把插件文件复制进去</li>
+  </ul>
+
+  <h2>二、疯歌里添加路径</h2>
+  <ul>
+    <li>打开疯歌音效平台（爱调音）</li>
+    <li>右上角 → 系统设置（齿轮图标）</li>
+    <li>找到「VST插件路径」或「插件目录」</li>
+    <li>点「添加」→ 选 <code>D:\VSTPlugins</code></li>
+    <li>确认保存</li>
+  </ul>
+
+  <h2>三、扫描插件</h2>
+  <ul>
+    <li>点「扫描插件」或「重新扫描」</li>
+    <li>等进度条走完（几十个插件一般几秒）</li>
+    <li>扫描完成后，插件列表里会出现你放的 VST</li>
+  </ul>
+
+  <h2>四、拖到效果链</h2>
+  <ul>
+    <li>回到主界面，找到麦克风效果链区域</li>
+    <li>从插件列表把 ReaEQ / ReaComp 等拖到效果链上</li>
+    <li>点插件名字打开参数面板，开始调</li>
+  </ul>
+
+  <h2>五、常见问题</h2>
+  <ul>
+    <li><strong>扫不出来？</strong> 检查路径对不对、文件是不是 .dll/.vst3、路径有没有中文</li>
+    <li><strong>疯歌闪退？</strong> 插件不兼容，删掉那个 .dll 重新扫描</li>
+    <li><strong>没声音？</strong> 插件别放在"输入"和"输出"之间断掉路由，保持串联</li>
+    <li><strong>延迟高？</strong> 用 ASIO 声卡驱动，缓冲区设 256~512</li>
+  </ul>
+
+  <p style="margin-top:30px; color:#666;">还有问题？加群/留言，我远程帮你看。</p>
+</div>
+</body>
+</html>
